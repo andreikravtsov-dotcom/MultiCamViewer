@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using LibVLCSharp.Shared;
+using LibVLCSharp.Avalonia;
 
 namespace MultiCamViewer
 {
@@ -136,6 +138,11 @@ namespace MultiCamViewer
         private void RootView_PointerPressed(object? sender, PointerPressedEventArgs e)
         {
             ShowControlsOverlay();
+        }
+
+        private void SettingsPanel_PointerPressed(object? sender, PointerPressedEventArgs e)
+        {
+            e.Handled = true;
         }
 
         private void CameraCountButton_Click(object? sender, RoutedEventArgs e)

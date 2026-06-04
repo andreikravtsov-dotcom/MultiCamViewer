@@ -27,6 +27,7 @@ namespace MultiCamViewer
 
     public partial class MainWindow : Window
     {
+        #region Member variables
 
         private const int CameraTotal = 4;
 
@@ -56,6 +57,8 @@ namespace MultiCamViewer
         private bool _playbackRequested;
         private int _cameraCount = 4;
         private CameraLayout _cameraLayout = CameraLayout.Grid;
+
+        #endregion /Member variables
 
         public MainWindow()
         {
@@ -413,6 +416,7 @@ namespace MultiCamViewer
 
                 media.AddOption(":no-audio");
                 mediaPlayer.Play(media);
+
                 _cameraPlaying[index] = true;
                 _cameraPlaybackKeys[index] = playbackKey;
             }

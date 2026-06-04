@@ -1,0 +1,498 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1280"
+        d:DesignHeight="780"
+        x:Class="MultiCamViewer.MainWindow"
+        Title="MultiCamViewer"
+        Background="#020305"
+        WindowState="FullScreen"
+        WindowDecorations="None">
+    <Window.Styles>
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="#F4F7FB" />
+            <Setter Property="FontFamily" Value="Inter" />
+        </Style>
+
+        <Style Selector="Button, ToggleButton">
+            <Setter Property="Background" Value="#10141B" />
+            <Setter Property="Foreground" Value="#DCE4EF" />
+            <Setter Property="BorderBrush" Value="#2A3342" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="11,7" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style Selector="Button">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button:pointerover, ToggleButton:pointerover">
+            <Setter Property="Background" Value="#1B2330" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#475569" />
+        </Style>
+
+        <Style Selector="Button:pointerover /template/ ContentPresenter, ToggleButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#1B2330" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#475569" />
+        </Style>
+
+        <Style Selector="Button:pointerover /template/ TextBlock, ToggleButton:pointerover /template/ TextBlock">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button:pressed, ToggleButton:pressed">
+            <Setter Property="Background" Value="#2563EB" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#6A95FF" />
+        </Style>
+
+        <Style Selector="Button:pressed /template/ ContentPresenter, ToggleButton:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2563EB" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#6A95FF" />
+        </Style>
+
+        <Style Selector="Button:pressed /template/ TextBlock, ToggleButton:pressed /template/ TextBlock">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="ToggleButton:checked">
+            <Setter Property="Background" Value="#2563EB" />
+            <Setter Property="BorderBrush" Value="#6A95FF" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="ToggleButton:checked /template/ ContentPresenter">
+            <Setter Property="Background" Value="#2563EB" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderBrush" Value="#6A95FF" />
+        </Style>
+
+        <Style Selector="ToggleButton:checked /template/ TextBlock">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="ToggleButton.camera-switch">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="18" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="#334155" />
+            <Setter Property="BorderBrush" Value="#475569" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid Width="34" Height="18">
+                        <Border Name="SwitchTrack"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="9" />
+                        <Ellipse Name="SwitchKnob"
+                                 Width="14"
+                                 Height="14"
+                                 Fill="#F8FAFC"
+                                 Margin="2"
+                                 HorizontalAlignment="Left"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="ToggleButton.camera-switch:checked">
+            <Setter Property="Background" Value="#2563EB" />
+            <Setter Property="BorderBrush" Value="#6A95FF" />
+        </Style>
+
+        <Style Selector="ToggleButton.camera-switch:pointerover">
+            <Setter Property="Background" Value="#475569" />
+            <Setter Property="BorderBrush" Value="#64748B" />
+        </Style>
+
+        <Style Selector="ToggleButton.camera-switch:checked:pointerover">
+            <Setter Property="Background" Value="#3B82F6" />
+            <Setter Property="BorderBrush" Value="#93C5FD" />
+        </Style>
+
+        <Style Selector="ToggleButton.camera-switch:checked /template/ Ellipse#SwitchKnob">
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+
+        <Style Selector="TextBox, ComboBox">
+            <Setter Property="Background" Value="#080B10" />
+            <Setter Property="Foreground" Value="#F4F7FB" />
+            <Setter Property="BorderBrush" Value="#273141" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="8,6" />
+        </Style>
+
+        <Style Selector="TextBox">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            Padding="{TemplateBinding Padding}">
+                        <ScrollViewer Name="PART_ScrollViewer"
+                                      HorizontalScrollBarVisibility="Hidden"
+                                      VerticalScrollBarVisibility="Hidden">
+                            <TextPresenter Name="PART_TextPresenter"
+                                           Text="{TemplateBinding Text}"
+                                           PasswordChar="{TemplateBinding PasswordChar}"
+                                           Foreground="#F4F7FB"
+                                           CaretBrush="#F4F7FB"
+                                           SelectionBrush="#475569" />
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+
+        <Style Selector="TextBox:pointerover, TextBox:focus, ComboBox:pointerover, ComboBox:focus">
+            <Setter Property="Background" Value="#080B10" />
+            <Setter Property="Foreground" Value="#F4F7FB" />
+            <Setter Property="BorderBrush" Value="#3B82F6" />
+        </Style>
+
+        <Style Selector="ComboBoxItem">
+            <Setter Property="Background" Value="#080B10" />
+            <Setter Property="Foreground" Value="#F4F7FB" />
+        </Style>
+
+        <Style Selector="ComboBoxItem:pointerover">
+            <Setter Property="Background" Value="#1F2937" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="ComboBoxItem:selected">
+            <Setter Property="Background" Value="#2563EB" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#7F1D1D" />
+            <Setter Property="BorderBrush" Value="#EF4444" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.danger:pointerover">
+            <Setter Property="Background" Value="#991B1B" />
+            <Setter Property="BorderBrush" Value="#F87171" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.danger:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#991B1B" />
+            <Setter Property="BorderBrush" Value="#F87171" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.danger:pointerover /template/ TextBlock">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.danger:pressed">
+            <Setter Property="Background" Value="#B91C1C" />
+            <Setter Property="BorderBrush" Value="#FCA5A5" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.danger:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#B91C1C" />
+            <Setter Property="BorderBrush" Value="#FCA5A5" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Button.danger:pressed /template/ TextBlock">
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+        <Style Selector="Border.camera-panel">
+            <Setter Property="Background" Value="#020305" />
+            <Setter Property="BorderBrush" Value="#161C26" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
+        <Style Selector="Border.camera-label">
+            <Setter Property="Background" Value="#CC070A10" />
+            <Setter Property="BorderBrush" Value="#2D3748" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Padding" Value="10,6" />
+        </Style>
+
+        <Style Selector="Border.settings-card">
+            <Setter Property="Background" Value="#0B0F16" />
+            <Setter Property="BorderBrush" Value="#253044" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+            <Setter Property="Padding" Value="12" />
+        </Style>
+    </Window.Styles>
+
+    <Grid x:Name="RootView" Background="#020305" PointerPressed="RootView_PointerPressed">
+        <Grid x:Name="CameraGrid"
+              RowDefinitions="*,*"
+              ColumnDefinitions="*,*"
+              RowSpacing="4"
+              ColumnSpacing="4"
+              Background="#020305">
+            <Border x:Name="Camera1Panel" Classes="camera-panel" Grid.Row="0" Grid.Column="0">
+                <Grid Background="#020305">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                        <TextBlock Text="LIVE STREAM"
+                                   Foreground="#536074"
+                                   FontSize="20"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock x:Name="Camera1UrlPreviewText"
+                                   Text="rtsp://192.168.1.101/live"
+                                   Foreground="#3D4655"
+                                   FontSize="12"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border x:Name="Camera2Panel" Classes="camera-panel" Grid.Row="0" Grid.Column="1">
+                <Grid Background="#020305">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                        <TextBlock Text="LIVE STREAM" Foreground="#536074" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="Camera2UrlPreviewText" Text="rtsp://192.168.1.102/live" Foreground="#3D4655" FontSize="12" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border x:Name="Camera3Panel" Classes="camera-panel" Grid.Row="1" Grid.Column="0">
+                <Grid Background="#020305">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                        <TextBlock Text="LIVE STREAM" Foreground="#536074" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="Camera3UrlPreviewText" Text="rtsp://192.168.1.103/live" Foreground="#3D4655" FontSize="12" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border x:Name="Camera4Panel" Classes="camera-panel" Grid.Row="1" Grid.Column="1">
+                <Grid Background="#020305">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+                        <TextBlock Text="LIVE STREAM" Foreground="#536074" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="Camera4UrlPreviewText" Text="rtsp://192.168.1.104/live" Foreground="#3D4655" FontSize="12" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border x:Name="ControlsOverlay"
+                IsVisible="False"
+                Background="#E6080B10"
+                BorderBrush="#253044"
+                BorderThickness="1"
+                CornerRadius="6"
+                Padding="12,10"
+                Margin="16"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Top">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="16">
+                <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <TextBlock Text="MULTICAM VIEWER" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
+                    <TextBlock x:Name="LayoutStatusText"
+                               Text="4 cameras - Grid 2x2"
+                               Foreground="#8D99AA"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center">
+                    <ToggleButton x:Name="CameraCount1Button" Content="1 Cam" Click="CameraCountButton_Click" />
+                    <ToggleButton x:Name="CameraCount2Button" Content="2 Cams" Click="CameraCountButton_Click" />
+                    <ToggleButton x:Name="CameraCount3Button" Content="3 Cams" Click="CameraCountButton_Click" />
+                    <ToggleButton x:Name="CameraCount4Button" Content="4 Cams" Click="CameraCountButton_Click" IsChecked="True" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="7">
+                    <ToggleButton x:Name="GridLayoutButton" Content="Grid" Click="LayoutButton_Click" IsChecked="True" />
+                    <ToggleButton x:Name="HorizontalLayoutButton" Content="Horizontal" Click="LayoutButton_Click" />
+                    <ToggleButton x:Name="VerticalLayoutButton" Content="Vertical" Click="LayoutButton_Click" />
+                </StackPanel>
+
+                <Button Grid.Column="3" Content="Settings" Click="SettingsButton_Click" />
+            </Grid>
+        </Border>
+
+        <Border x:Name="SettingsPanel"
+                IsVisible="False"
+                Width="390"
+                Background="#F2070A10"
+                BorderBrush="#253044"
+                BorderThickness="1,0,0,0"
+                Padding="16"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Stretch">
+            <Grid RowDefinitions="Auto,*">
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="Camera Settings" FontSize="22" FontWeight="Bold" />
+                        <TextBlock Text="RTSP credentials and stream options" Foreground="#8D99AA" FontSize="12" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Close" Click="CloseSettingsButton_Click" VerticalAlignment="Top" />
+                </Grid>
+
+                <ScrollViewer Grid.Row="1">
+                    <StackPanel Spacing="12">
+                        <Border Classes="settings-card">
+                            <StackPanel Spacing="9">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Camera 1" FontWeight="Bold" VerticalAlignment="Center" />
+                                    <ToggleButton x:Name="Camera1EnabledButton"
+                                                  Grid.Column="1"
+                                                  Classes="camera-switch"
+                                                  ToolTip.Tip="Use camera"
+                                                  IsChecked="True"
+                                                  Click="CameraEnabledButton_Click" />
+                                </Grid>
+                                <StackPanel x:Name="Camera1SettingsFields" Spacing="9">
+                                    <TextBox x:Name="Camera1UrlTextBox" Text="rtsp://192.168.1.101/live" PlaceholderText="RTSP URL" />
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                        <TextBox x:Name="Camera1LoginTextBox" Text="admin" PlaceholderText="Login" />
+                                        <TextBox x:Name="Camera1PasswordTextBox" Grid.Column="1" Text="password" PasswordChar="*" PlaceholderText="Password" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                        <ComboBox x:Name="Camera1StreamComboBox" SelectedIndex="0">
+                                            <ComboBoxItem Content="Main stream" />
+                                            <ComboBoxItem Content="Sub stream" />
+                                            <ComboBoxItem Content="Auto" />
+                                        </ComboBox>
+                                        <ComboBox x:Name="Camera1TransportComboBox" Grid.Column="1" SelectedIndex="0">
+                                            <ComboBoxItem Content="RTSP over TCP" />
+                                            <ComboBoxItem Content="RTSP over UDP" />
+                                        </ComboBox>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="settings-card">
+                            <StackPanel Spacing="9">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Camera 2" FontWeight="Bold" VerticalAlignment="Center" />
+                                    <ToggleButton x:Name="Camera2EnabledButton"
+                                                  Grid.Column="1"
+                                                  Classes="camera-switch"
+                                                  ToolTip.Tip="Use camera"
+                                                  IsChecked="True"
+                                                  Click="CameraEnabledButton_Click" />
+                                </Grid>
+                                <StackPanel x:Name="Camera2SettingsFields" Spacing="9">
+                                    <TextBox x:Name="Camera2UrlTextBox" Text="rtsp://192.168.1.102/live" PlaceholderText="RTSP URL" />
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                        <TextBox x:Name="Camera2LoginTextBox" Text="admin" PlaceholderText="Login" />
+                                        <TextBox x:Name="Camera2PasswordTextBox" Grid.Column="1" Text="password" PasswordChar="*" PlaceholderText="Password" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                        <ComboBox x:Name="Camera2StreamComboBox" SelectedIndex="0">
+                                            <ComboBoxItem Content="Main stream" />
+                                            <ComboBoxItem Content="Sub stream" />
+                                            <ComboBoxItem Content="Auto" />
+                                        </ComboBox>
+                                        <ComboBox x:Name="Camera2TransportComboBox" Grid.Column="1" SelectedIndex="0">
+                                            <ComboBoxItem Content="RTSP over TCP" />
+                                            <ComboBoxItem Content="RTSP over UDP" />
+                                        </ComboBox>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="settings-card">
+                            <StackPanel Spacing="9">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Camera 3" FontWeight="Bold" VerticalAlignment="Center" />
+                                    <ToggleButton x:Name="Camera3EnabledButton"
+                                                  Grid.Column="1"
+                                                  Classes="camera-switch"
+                                                  ToolTip.Tip="Use camera"
+                                                  IsChecked="True"
+                                                  Click="CameraEnabledButton_Click" />
+                                </Grid>
+                                <StackPanel x:Name="Camera3SettingsFields" Spacing="9">
+                                    <TextBox x:Name="Camera3UrlTextBox" Text="rtsp://192.168.1.103/live" PlaceholderText="RTSP URL" />
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                        <TextBox x:Name="Camera3LoginTextBox" Text="admin" PlaceholderText="Login" />
+                                        <TextBox x:Name="Camera3PasswordTextBox" Grid.Column="1" Text="password" PasswordChar="*" PlaceholderText="Password" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                        <ComboBox x:Name="Camera3StreamComboBox" SelectedIndex="0">
+                                            <ComboBoxItem Content="Main stream" />
+                                            <ComboBoxItem Content="Sub stream" />
+                                            <ComboBoxItem Content="Auto" />
+                                        </ComboBox>
+                                        <ComboBox x:Name="Camera3TransportComboBox" Grid.Column="1" SelectedIndex="0">
+                                            <ComboBoxItem Content="RTSP over TCP" />
+                                            <ComboBoxItem Content="RTSP over UDP" />
+                                        </ComboBox>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Classes="settings-card">
+                            <StackPanel Spacing="9">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="Camera 4" FontWeight="Bold" VerticalAlignment="Center" />
+                                    <ToggleButton x:Name="Camera4EnabledButton"
+                                                  Grid.Column="1"
+                                                  Classes="camera-switch"
+                                                  ToolTip.Tip="Use camera"
+                                                  IsChecked="True"
+                                                  Click="CameraEnabledButton_Click" />
+                                </Grid>
+                                <StackPanel x:Name="Camera4SettingsFields" Spacing="9">
+                                    <TextBox x:Name="Camera4UrlTextBox" Text="rtsp://192.168.1.104/live" PlaceholderText="RTSP URL" />
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                        <TextBox x:Name="Camera4LoginTextBox" Text="admin" PlaceholderText="Login" />
+                                        <TextBox x:Name="Camera4PasswordTextBox" Grid.Column="1" Text="password" PasswordChar="*" PlaceholderText="Password" />
+                                    </Grid>
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                        <ComboBox x:Name="Camera4StreamComboBox" SelectedIndex="0">
+                                            <ComboBoxItem Content="Main stream" />
+                                            <ComboBoxItem Content="Sub stream" />
+                                            <ComboBoxItem Content="Auto" />
+                                        </ComboBox>
+                                        <ComboBox x:Name="Camera4TransportComboBox" Grid.Column="1" SelectedIndex="0">
+                                            <ComboBoxItem Content="RTSP over TCP" />
+                                            <ComboBoxItem Content="RTSP over UDP" />
+                                        </ComboBox>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Button Content="Save Settings" Click="SaveSettingsButton_Click" HorizontalAlignment="Stretch" />
+                        <Button Classes="danger"
+                                Content="Exit Application"
+                                Click="ExitApplicationButton_Click"
+                                HorizontalAlignment="Stretch" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

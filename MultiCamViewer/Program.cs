@@ -1,5 +1,5 @@
 ﻿using Avalonia;
-using LibVLCSharp.Shared;
+using Serilog;
 using System;
 
 namespace MultiCamViewer
@@ -9,7 +9,8 @@ namespace MultiCamViewer
         [STAThread]
         public static void Main(string[] args)
         {
-            Core.Initialize();
+            Log.Logger = new LoggerConfiguration().WriteTo.Console().
+                WriteTo.File("logs/log-.txt", rollingInterval: RollingInterval.Day).CreateLogger();
 
             BuildAvaloniaApp()
                 .StartWithClassicDesktopLifetime(args);

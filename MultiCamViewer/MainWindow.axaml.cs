@@ -3,12 +3,13 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using LibVLCSharp.Avalonia;
+using LibVLCSharp.Shared;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using LibVLCSharp.Shared;
-using LibVLCSharp.Avalonia;
+using System.Threading.Tasks;
 
 namespace MultiCamViewer
 {
@@ -27,8 +28,16 @@ namespace MultiCamViewer
         private readonly IReadOnlyList<ComboBox> _cameraStreamComboBoxes;
         private readonly IReadOnlyList<ComboBox> _cameraTransportComboBoxes;
         private readonly IReadOnlyList<TextBlock> _cameraUrlPreviewTexts;
+        private readonly IReadOnlyList<Grid> _cameraVideoHosts;
         private readonly DispatcherTimer _controlsHideTimer;
         private readonly bool[] _cameraEnabled = [true, true, true, true];
+        private readonly bool[] _cameraPlaying = [false, false, false, false];
+        private readonly string[] _cameraPlaybackKeys = ["", "", "", ""];
+        private readonly MediaPlayer?[] _mediaPlayers = new MediaPlayer?[CameraTotal];
+        private LibVLC? _libVlc;
+        private bool _vlcReady;
+        private bool _vlcInitializing;
+        private bool _playbackRequested;
         private int _cameraCount = 4;
         private CameraLayout _cameraLayout = CameraLayout.Grid;
 
@@ -36,7 +45,6 @@ namespace MultiCamViewer
         {
             InitializeComponent();
             WindowState = WindowState.FullScreen;
-            Cursor = new Cursor(StandardCursorType.None);
 
             _cameraPanels =
             [
@@ -125,6 +133,14 @@ namespace MultiCamViewer
                 Camera4UrlPreviewText
             ];
 
+            _cameraVideoHosts =
+            [
+                Camera1VideoHost,
+                Camera2VideoHost,
+                Camera3VideoHost,
+                Camera4VideoHost
+            ];
+
             _controlsHideTimer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromSeconds(4)
@@ -133,6 +149,13 @@ namespace MultiCamViewer
 
             LoadSettings();
             ApplyCameraLayout();
+        }
+
+        protected override async void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            await Task.Delay(1500);
+            await StartLivePlaybackAsync();
         }
 
         private void RootView_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -183,15 +206,23 @@ namespace MultiCamViewer
             ApplyCameraLayout();
         }
 
+        private void StartLiveButton_Click(object? sender, RoutedEventArgs e)
+        {
+            ShowControlsOverlay();
+            _ = StartLivePlaybackAsync();
+        }
+
         private void SettingsButton_Click(object? sender, RoutedEventArgs e)
         {
             SettingsPanel.IsVisible = true;
+            SetVideoHostsVisible(false);
             ShowControlsOverlay();
         }
 
         private void CloseSettingsButton_Click(object? sender, RoutedEventArgs e)
         {
             SettingsPanel.IsVisible = false;
+            SetVideoHostsVisible(!ControlsOverlay.IsVisible);
             ShowControlsOverlay();
         }
 
@@ -200,8 +231,9 @@ namespace MultiCamViewer
             ReadCameraEnabledFromUi();
             UpdateCameraUrlPreviews();
             SaveSettings();
+            RestartVisibleCameraStreams();
             ApplyCameraLayout();
-            ShowControlsOverlay();
+            _ = StartLivePlaybackAsync();
         }
 
         private void ExitApplicationButton_Click(object? sender, RoutedEventArgs e)
@@ -210,9 +242,88 @@ namespace MultiCamViewer
             Close();
         }
 
+        protected override void OnClosed(EventArgs e)
+        {
+            StopAllCameraStreams();
+
+            foreach (var mediaPlayer in _mediaPlayers)
+            {
+                mediaPlayer?.Dispose();
+            }
+
+            _libVlc?.Dispose();
+            base.OnClosed(e);
+        }
+
+        private async Task StartLivePlaybackAsync()
+        {
+            _playbackRequested = true;
+
+            if (_vlcReady)
+            {
+                SynchronizeCameraPlayback();
+                return;
+            }
+
+            await InitializeVlcPlaybackAsync();
+        }
+
+        private async Task InitializeVlcPlaybackAsync()
+        {
+            if (_vlcReady || _vlcInitializing)
+            {
+                return;
+            }
+
+            _vlcInitializing = true;
+            await Task.Delay(1000);
+
+            LibVLC libVlc;
+
+            try
+            {
+                libVlc = await Task.Run(() =>
+                {
+                    Core.Initialize();
+                    return new LibVLC("--no-osd", "--no-video-title-show", "--quiet");
+                });
+            }
+            catch
+            {
+                _vlcInitializing = false;
+                LayoutStatusText.Text = "VLC initialization failed";
+                return;
+            }
+
+            _libVlc = libVlc;
+
+            for (var index = 0; index < CameraTotal; index++)
+            {
+                var mediaPlayer = new MediaPlayer(_libVlc)
+                {
+                    EnableMouseInput = false,
+                    EnableKeyInput = false,
+                    Mute = true
+                };
+
+                _mediaPlayers[index] = mediaPlayer;
+                var videoView = new VideoView
+                {
+                    MediaPlayer = mediaPlayer,
+                    Focusable = false
+                };
+                _cameraVideoHosts[index].Children.Clear();
+                _cameraVideoHosts[index].Children.Add(videoView);
+            }
+
+            _vlcReady = true;
+            _vlcInitializing = false;
+            SynchronizeCameraPlayback();
+        }
+
         private void ShowControlsOverlay()
         {
-            Cursor = new Cursor(StandardCursorType.Arrow);
+            SetVideoHostsVisible(false);
             ControlsOverlay.IsVisible = true;
             _controlsHideTimer.Stop();
             _controlsHideTimer.Start();
@@ -225,7 +336,15 @@ namespace MultiCamViewer
 
             if (!SettingsPanel.IsVisible)
             {
-                Cursor = new Cursor(StandardCursorType.None);
+                SetVideoHostsVisible(true);
+            }
+        }
+
+        private void SetVideoHostsVisible(bool isVisible)
+        {
+            for (var index = 0; index < _cameraVideoHosts.Count; index++)
+            {
+                _cameraVideoHosts[index].IsVisible = isVisible;
             }
         }
 
@@ -330,6 +449,121 @@ namespace MultiCamViewer
             UpdateCheckedButton(_countButtons, _cameraCount - 1);
             UpdateCheckedButton(_layoutButtons, (int)_cameraLayout);
             UpdateStatusText(rows, columns);
+            SynchronizeCameraPlayback();
+        }
+
+        private void SynchronizeCameraPlayback()
+        {
+            if (!_playbackRequested || !_vlcReady)
+            {
+                return;
+            }
+
+            for (var index = 0; index < CameraTotal; index++)
+            {
+                if (_cameraPanels[index].IsVisible && _cameraEnabled[index])
+                {
+                    EnsureCameraPlaying(index);
+                }
+                else
+                {
+                    StopCameraStream(index);
+                }
+            }
+        }
+
+        private void RestartVisibleCameraStreams()
+        {
+            for (var index = 0; index < CameraTotal; index++)
+            {
+                if (_cameraPanels[index].IsVisible)
+                {
+                    StopCameraStream(index);
+                }
+            }
+        }
+
+        private void EnsureCameraPlaying(int index)
+        {
+            var mediaPlayer = _mediaPlayers[index];
+
+            if (_libVlc is null || mediaPlayer is null)
+            {
+                return;
+            }
+
+            var url = BuildCameraUrl(index);
+            var playbackKey = $"{url}|{_cameraTransportComboBoxes[index].SelectedIndex}";
+
+            if (_cameraPlaying[index] && _cameraPlaybackKeys[index] == playbackKey)
+            {
+                return;
+            }
+
+            StopCameraStream(index);
+
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return;
+            }
+
+            using var media = new Media(_libVlc, url, FromType.FromLocation);
+
+            if (_cameraTransportComboBoxes[index].SelectedIndex == 0)
+            {
+                media.AddOption(":rtsp-tcp");
+            }
+
+            media.AddOption(":no-audio");
+            mediaPlayer.Play(media);
+            _cameraPlaying[index] = true;
+            _cameraPlaybackKeys[index] = playbackKey;
+        }
+
+        private void StopAllCameraStreams()
+        {
+            for (var index = 0; index < CameraTotal; index++)
+            {
+                StopCameraStream(index);
+            }
+        }
+
+        private void StopCameraStream(int index)
+        {
+            var mediaPlayer = _mediaPlayers[index];
+
+            if (mediaPlayer?.IsPlaying == true)
+            {
+                mediaPlayer.Stop();
+            }
+
+            _cameraPlaying[index] = false;
+            _cameraPlaybackKeys[index] = string.Empty;
+        }
+
+        private string BuildCameraUrl(int index)
+        {
+            var url = _cameraUrlTextBoxes[index].Text ?? string.Empty;
+            var login = _cameraLoginTextBoxes[index].Text ?? string.Empty;
+            var password = _cameraPasswordTextBoxes[index].Text ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(login))
+            {
+                return url;
+            }
+
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !string.IsNullOrEmpty(uri.UserInfo))
+            {
+                return url;
+            }
+
+            var builder = new UriBuilder(uri)
+            {
+                UserName = login,
+                Password = password
+            };
+
+            return builder.Uri.ToString();
         }
 
         private void UpdateCameraCountButtons(int activeCameraCount)

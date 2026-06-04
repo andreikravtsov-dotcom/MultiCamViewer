@@ -145,31 +145,25 @@
         </Style>
 
         <Style Selector="TextBox">
-            <Setter Property="Template">
-                <ControlTemplate>
-                    <Border Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}"
-                            BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="{TemplateBinding CornerRadius}"
-                            Padding="{TemplateBinding Padding}">
-                        <ScrollViewer Name="PART_ScrollViewer"
-                                      HorizontalScrollBarVisibility="Hidden"
-                                      VerticalScrollBarVisibility="Hidden">
-                            <TextPresenter Name="PART_TextPresenter"
-                                           Text="{TemplateBinding Text}"
-                                           PasswordChar="{TemplateBinding PasswordChar}"
-                                           Foreground="#F4F7FB"
-                                           CaretBrush="#F4F7FB"
-                                           SelectionBrush="#475569" />
-                        </ScrollViewer>
-                    </Border>
-                </ControlTemplate>
-            </Setter>
+            <Setter Property="SelectionBrush" Value="#2563EB" />
+            <Setter Property="SelectionForegroundBrush" Value="White" />
+            <Setter Property="CaretBrush" Value="#F4F7FB" />
+            <Setter Property="IsInactiveSelectionHighlightEnabled" Value="True" />
         </Style>
 
         <Style Selector="TextBox:pointerover, TextBox:focus, ComboBox:pointerover, ComboBox:focus">
             <Setter Property="Background" Value="#080B10" />
             <Setter Property="Foreground" Value="#F4F7FB" />
+            <Setter Property="BorderBrush" Value="#3B82F6" />
+        </Style>
+
+        <Style Selector="TextBox /template/ Border">
+            <Setter Property="Background" Value="#080B10" />
+            <Setter Property="BorderBrush" Value="#273141" />
+        </Style>
+
+        <Style Selector="TextBox:focus /template/ Border">
+            <Setter Property="Background" Value="#080B10" />
             <Setter Property="BorderBrush" Value="#3B82F6" />
         </Style>
 
@@ -277,8 +271,16 @@
         </Style>
     </Window.Styles>
 
-    <Grid x:Name="RootView" Background="#020305" PointerPressed="RootView_PointerPressed">
+    <Grid x:Name="RootView"
+          RowDefinitions="4,*"
+          Background="#020305">
+        <Border x:Name="TopActivationStrip"
+                Grid.Row="0"
+                Background="#010203"
+                PointerPressed="RootView_PointerPressed" />
+
         <Grid x:Name="CameraGrid"
+              Grid.Row="1"
               RowDefinitions="*,*"
               ColumnDefinitions="*,*"
               RowSpacing="4"
@@ -286,6 +288,7 @@
               Background="#020305">
             <Border x:Name="Camera1Panel" Classes="camera-panel" Grid.Row="0" Grid.Column="0">
                 <Grid Background="#020305">
+                    <Grid x:Name="Camera1VideoHost" />
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
                         <TextBlock Text="LIVE STREAM"
                                    Foreground="#536074"
@@ -303,6 +306,7 @@
 
             <Border x:Name="Camera2Panel" Classes="camera-panel" Grid.Row="0" Grid.Column="1">
                 <Grid Background="#020305">
+                    <Grid x:Name="Camera2VideoHost" />
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
                         <TextBlock Text="LIVE STREAM" Foreground="#536074" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock x:Name="Camera2UrlPreviewText" Text="rtsp://192.168.1.102/live" Foreground="#3D4655" FontSize="12" HorizontalAlignment="Center" />
@@ -312,6 +316,7 @@
 
             <Border x:Name="Camera3Panel" Classes="camera-panel" Grid.Row="1" Grid.Column="0">
                 <Grid Background="#020305">
+                    <Grid x:Name="Camera3VideoHost" />
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
                         <TextBlock Text="LIVE STREAM" Foreground="#536074" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock x:Name="Camera3UrlPreviewText" Text="rtsp://192.168.1.103/live" Foreground="#3D4655" FontSize="12" HorizontalAlignment="Center" />
@@ -321,6 +326,7 @@
 
             <Border x:Name="Camera4Panel" Classes="camera-panel" Grid.Row="1" Grid.Column="1">
                 <Grid Background="#020305">
+                    <Grid x:Name="Camera4VideoHost" />
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
                         <TextBlock Text="LIVE STREAM" Foreground="#536074" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock x:Name="Camera4UrlPreviewText" Text="rtsp://192.168.1.104/live" Foreground="#3D4655" FontSize="12" HorizontalAlignment="Center" />
@@ -330,6 +336,7 @@
         </Grid>
 
         <Border x:Name="ControlsOverlay"
+                Grid.RowSpan="2"
                 IsVisible="False"
                 Background="#E6080B10"
                 BorderBrush="#253044"
@@ -339,7 +346,7 @@
                 Margin="16"
                 HorizontalAlignment="Stretch"
                 VerticalAlignment="Top">
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="16">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" ColumnSpacing="16">
                 <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
                     <TextBlock Text="MULTICAM VIEWER" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" />
                     <TextBlock x:Name="LayoutStatusText"
@@ -361,11 +368,13 @@
                     <ToggleButton x:Name="VerticalLayoutButton" Content="Vertical" Click="LayoutButton_Click" />
                 </StackPanel>
 
-                <Button Grid.Column="3" Content="Settings" Click="SettingsButton_Click" />
+                <Button Grid.Column="3" Content="Start Live" Click="StartLiveButton_Click" />
+                <Button Grid.Column="4" Content="Settings" Click="SettingsButton_Click" />
             </Grid>
         </Border>
 
         <Border x:Name="SettingsPanel"
+                Grid.RowSpan="2"
                 IsVisible="False"
                 Width="390"
                 Background="#F2070A10"

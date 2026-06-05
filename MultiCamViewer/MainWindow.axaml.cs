@@ -33,6 +33,8 @@ namespace MultiCamViewer
         #region Member variables
 
         private const int CameraTotal = 4;
+        private const int RtspTimeoutMicroseconds = 5_000_000;
+        private const int NetworkCacheMilliseconds = 1_000;
 
         private readonly IReadOnlyList<Border> _cameraPanels;
         private readonly IReadOnlyList<ToggleButton> _countButtons;
@@ -48,10 +50,14 @@ namespace MultiCamViewer
         private readonly IReadOnlyList<StackPanel> _cameraPlaceholderPanels;
         private readonly IReadOnlyList<Grid> _cameraVideoHosts;
         private readonly DispatcherTimer _controlsHideTimer;
+        private readonly DispatcherTimer _autoReconnectTimer;
 
         private readonly bool[] _cameraEnabled = [true, true, true, true];
         private readonly bool[] _cameraPlaying = [false, false, false, false];
+        private readonly bool[] _cameraPlayStarting = [false, false, false, false];
         private readonly string[] _cameraPlaybackKeys = ["", "", "", ""];
+        private readonly int[] _cameraPlaybackVersions = new int[CameraTotal];
+        private readonly DateTimeOffset[] _lastReconnectAttemptAt = new DateTimeOffset[CameraTotal];
 
         private readonly MediaPlayer?[] _mediaPlayers = new MediaPlayer?[CameraTotal];
         private LibVLC? _libVlc;
@@ -183,6 +189,14 @@ namespace MultiCamViewer
                 Interval = TimeSpan.FromSeconds(4)
             };
             _controlsHideTimer.Tick += (_, _) => HideControlsOverlay();
+
+            _autoReconnectTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(5)
+            };
+            _autoReconnectTimer.Tick += (_, _) => AutoReconnectCameraStreams();
+            _autoReconnectTimer.Start();
+
             SizeChanged += MainWindow_SizeChanged;
 
             LoadSettings();
@@ -221,6 +235,7 @@ namespace MultiCamViewer
             try
             {
                 _suspendPlaybackSync = true;
+                _autoReconnectTimer.Stop();
 
                 StopAllCameraStreams();
                 DisposeVlcPlayback();
@@ -413,9 +428,13 @@ namespace MultiCamViewer
                     return;
 
                 var url = BuildCameraUrl(index);
-                var playbackKey = $"{url}|{_cameraTransportComboBoxes[index].SelectedIndex}|{_cameraLayout}";
+                var transportIndex = _cameraTransportComboBoxes[index].SelectedIndex;
+                var playbackKey = $"{url}|{transportIndex}|{_cameraLayout}";
 
-                if (_cameraPlaying[index] && _cameraPlaybackKeys[index] == playbackKey)
+                if (_cameraPlaying[index] && _cameraPlaybackKeys[index] == playbackKey && mediaPlayer.IsPlaying)
+                    return;
+
+                if (_cameraPlayStarting[index])
                     return;
 
                 StopCameraStream(index);
@@ -423,21 +442,79 @@ namespace MultiCamViewer
                 if (string.IsNullOrWhiteSpace(url))
                     return;
 
-                using var media = new Media(_libVlc, url, FromType.FromLocation);
-
-                if (_cameraTransportComboBoxes[index].SelectedIndex == 0)
-                    media.AddOption(":rtsp-tcp");
-
-                media.AddOption(":no-audio");
-                mediaPlayer.Play(media);
-
-                _cameraPlaying[index] = true;
-                _cameraPlaybackKeys[index] = playbackKey;
+                var playbackVersion = _cameraPlaybackVersions[index];
+                _cameraPlayStarting[index] = true;
+                _lastReconnectAttemptAt[index] = DateTimeOffset.UtcNow;
+                _ = StartCameraPlaybackAsync(index, playbackVersion, mediaPlayer, url, transportIndex, playbackKey);
             }
             catch
             {
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Starts the playback of the camera stream for the specified index by creating a new Media object with the appropriate options based on the camera settings,
+        /// </summary>
+        /// <param name="index"></param>
+        /// <param name="playbackVersion"></param>
+        /// <param name="mediaPlayer"></param>
+        /// <param name="url"></param>
+        /// <param name="transportIndex"></param>
+        /// <param name="playbackKey"></param>
+        /// <returns></returns>
+        private async Task StartCameraPlaybackAsync(int index, int playbackVersion, MediaPlayer mediaPlayer, string url, int transportIndex, string playbackKey)
+        {
+            bool playStarted;
+
+            try
+            {
+                playStarted = await Task.Run(() =>
+                {
+                    var libVlc = _libVlc;
+                    if (libVlc is null)
+                        return false;
+
+                    using var media = new Media(libVlc, url, FromType.FromLocation);
+
+                    if (transportIndex == 0)
+                        media.AddOption(":rtsp-tcp");
+
+                    media.AddOption(":no-audio");
+                    media.AddOption($":rtsp-timeout={RtspTimeoutMicroseconds}");
+                    media.AddOption($":network-caching={NetworkCacheMilliseconds}");
+                    media.AddOption($":live-caching={NetworkCacheMilliseconds}");
+
+                    return mediaPlayer.Play(media);
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Error starting camera playback");
+                playStarted = false;
+            }
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (index < 0 || index >= CameraTotal)
+                    return;
+
+                _cameraPlayStarting[index] = false;
+
+                if (playbackVersion != _cameraPlaybackVersions[index]
+                    || !playStarted
+                    || _suspendPlaybackSync
+                    || !_cameraPanels[index].IsVisible
+                    || !_cameraEnabled[index])
+                {
+                    _cameraPlaying[index] = false;
+                    _cameraPlaybackKeys[index] = string.Empty;
+                    return;
+                }
+
+                _cameraPlaying[index] = true;
+                _cameraPlaybackKeys[index] = playbackKey;
+            });
         }
 
         /// <summary>
@@ -466,6 +543,79 @@ namespace MultiCamViewer
         }
 
         /// <summary>
+        /// Automatically attempts to reconnect camera streams that have stopped playing due to errors or network issues.
+        /// </summary>
+        private void AutoReconnectCameraStreams()
+        {
+            try
+            {
+                if (_suspendPlaybackSync || !_playbackRequested || !_vlcReady)
+                    return;
+
+                for (var index = 0; index < CameraTotal; index++)
+                {
+                    if (!_cameraPanels[index].IsVisible || !_cameraEnabled[index])
+                        continue;
+
+                    var mediaPlayer = _mediaPlayers[index];
+                    if (mediaPlayer is null)
+                        continue;
+
+                    if (_cameraPlayStarting[index])
+                        continue;
+
+                    var url = BuildCameraUrl(index);
+                    if (string.IsNullOrWhiteSpace(url))
+                        continue;
+
+                    if (_cameraPlaying[index] && mediaPlayer.IsPlaying)
+                        continue;
+
+                    if (DateTimeOffset.UtcNow - _lastReconnectAttemptAt[index] < TimeSpan.FromSeconds(10))
+                        continue;
+
+                    _cameraPlaying[index] = false;
+                    _cameraPlaybackKeys[index] = string.Empty;
+                    EnsureCameraPlaying(index);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Error during camera auto reconnect");
+            }
+        }
+
+        /// <summary>
+        /// Registers event handlers for the specified media player to monitor for playback errors and end of stream events.
+        /// </summary>
+        /// <param name="mediaPlayer"></param>
+        /// <param name="index"></param>
+        private void RegisterCameraPlaybackEvents(MediaPlayer mediaPlayer, int index)
+        {
+            mediaPlayer.EncounteredError += (_, _) => MarkCameraForReconnect(index);
+            mediaPlayer.EndReached += (_, _) => MarkCameraForReconnect(index);
+        }
+
+        /// <summary>
+        /// Marks the camera stream for the specified index to be reconnected by setting its playing state to false and clearing its playback key.
+        /// </summary>
+        /// <param name="index"></param>
+        private void MarkCameraForReconnect(int index)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (index < 0 || index >= CameraTotal)
+                    return;
+
+                if (_cameraPlayStarting[index])
+                    return;
+
+                _cameraPlaying[index] = false;
+                _cameraPlaybackKeys[index] = string.Empty;
+            });
+        }
+
+        /// <summary>
         /// Stops all camera streams
         /// </summary>
         private void StopAllCameraStreams()
@@ -490,6 +640,9 @@ namespace MultiCamViewer
             try
             {
                 var mediaPlayer = _mediaPlayers[index];
+
+                _cameraPlaybackVersions[index]++;
+                _cameraPlayStarting[index] = false;
 
                 if (mediaPlayer?.IsPlaying == true)
                     mediaPlayer.Stop();
@@ -596,6 +749,7 @@ namespace MultiCamViewer
                     EnableKeyInput = false,
                     Mute = true
                 };
+                RegisterCameraPlaybackEvents(mediaPlayer, index);
 
                 _mediaPlayers[index] = mediaPlayer;
                 var videoView = new VideoView

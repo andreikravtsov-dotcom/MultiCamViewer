@@ -7,6 +7,7 @@
         d:DesignHeight="780"
         x:Class="MultiCamViewer.MainWindow"
         Title="MultiCamViewer"
+        Icon="/Assets/app-icon.png"
         Background="#020305"
         WindowState="FullScreen"
         WindowDecorations="None">

@@ -23,9 +23,8 @@
         public string Password { get; set; } = "password";
 
         /// <summary>
-        /// The index of the stream to use from the camera. Some cameras may provide multiple streams (e.g., different resolutions or quality levels), 
-        /// and this property allows you to specify which stream to use. The index is typically zero-based, meaning that the first stream would be index 0, 
-        /// the second stream would be index 1, and so on.
+        /// Selected camera stream option: 0 = main, 1 = sub, 2 = auto.
+        /// The value is applied to RTSP URL placeholders such as {stream}, {streamIndex}, {channel}, and {subtype}.
         /// </summary>
         public int StreamIndex { get; set; }
 

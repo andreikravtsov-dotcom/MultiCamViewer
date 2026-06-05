@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace MultiCamViewer
@@ -664,7 +665,9 @@ namespace MultiCamViewer
         {
             try
             {
-                var url = _cameraUrlTextBoxes[index].Text ?? string.Empty;
+                var url = ApplyStreamSelectionToUrl(
+                    _cameraUrlTextBoxes[index].Text ?? string.Empty,
+                    _cameraStreamComboBoxes[index].SelectedIndex);
                 var login = _cameraLoginTextBoxes[index].Text ?? string.Empty;
                 var password = _cameraPasswordTextBoxes[index].Text ?? string.Empty;
 
@@ -685,6 +688,65 @@ namespace MultiCamViewer
             {
                 throw;
             }
+        }
+
+        private static string ApplyStreamSelectionToUrl(string url, int streamIndex)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return url;
+
+            var streamName = streamIndex switch
+            {
+                1 => "sub",
+                2 => "auto",
+                _ => "main"
+            };
+
+            var streamNumber = streamIndex switch
+            {
+                1 => "1",
+                _ => "0"
+            };
+
+            var channelNumber = streamIndex switch
+            {
+                1 => "102",
+                _ => "101"
+            };
+
+            var result = url
+                .Replace("{stream}", streamName, StringComparison.OrdinalIgnoreCase)
+                .Replace("{streamIndex}", streamNumber, StringComparison.OrdinalIgnoreCase)
+                .Replace("{channel}", channelNumber, StringComparison.OrdinalIgnoreCase)
+                .Replace("{subtype}", streamNumber, StringComparison.OrdinalIgnoreCase);
+
+            if (!string.Equals(result, url, StringComparison.Ordinal))
+                return result;
+
+            return streamIndex switch
+            {
+                0 => ApplyKnownMainStreamPatterns(url),
+                1 => ApplyKnownSubStreamPatterns(url),
+                _ => url
+            };
+        }
+
+        private static string ApplyKnownMainStreamPatterns(string url)
+        {
+            var result = Regex.Replace(url, @"(?<=/Streaming/Channels/)102\b", "101", RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"([?&]subtype=)1\b", "${1}0", RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"([?&]stream=)sub\b", "${1}main", RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"(?<=/)sub(?=/?(?:$|[?#]))", "main", RegexOptions.IgnoreCase);
+            return result;
+        }
+
+        private static string ApplyKnownSubStreamPatterns(string url)
+        {
+            var result = Regex.Replace(url, @"(?<=/Streaming/Channels/)101\b", "102", RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"([?&]subtype=)0\b", "${1}1", RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"([?&]stream=)main\b", "${1}sub", RegexOptions.IgnoreCase);
+            result = Regex.Replace(result, @"(?<=/)main(?=/?(?:$|[?#]))", "sub", RegexOptions.IgnoreCase);
+            return result;
         }
 
         /// <summary>

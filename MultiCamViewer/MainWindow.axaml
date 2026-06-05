@@ -408,7 +408,7 @@
                                                   Click="CameraEnabledButton_Click" />
                                 </Grid>
                                 <StackPanel x:Name="Camera1SettingsFields" Spacing="9">
-                                    <TextBox x:Name="Camera1UrlTextBox" Text="rtsp://192.168.1.101/live" PlaceholderText="RTSP URL" />
+                                    <TextBox x:Name="Camera1UrlTextBox" Text="rtsp://192.168.1.101/live" PlaceholderText="RTSP URL, supports {stream}, {streamIndex}, {channel}, {subtype}" />
                                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                                         <TextBox x:Name="Camera1LoginTextBox" Text="admin" PlaceholderText="Login" />
                                         <TextBox x:Name="Camera1PasswordTextBox" Grid.Column="1" Text="password" PasswordChar="*" PlaceholderText="Password" />
@@ -440,7 +440,7 @@
                                                   Click="CameraEnabledButton_Click" />
                                 </Grid>
                                 <StackPanel x:Name="Camera2SettingsFields" Spacing="9">
-                                    <TextBox x:Name="Camera2UrlTextBox" Text="rtsp://192.168.1.102/live" PlaceholderText="RTSP URL" />
+                                    <TextBox x:Name="Camera2UrlTextBox" Text="rtsp://192.168.1.102/live" PlaceholderText="RTSP URL, supports {stream}, {streamIndex}, {channel}, {subtype}" />
                                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                                         <TextBox x:Name="Camera2LoginTextBox" Text="admin" PlaceholderText="Login" />
                                         <TextBox x:Name="Camera2PasswordTextBox" Grid.Column="1" Text="password" PasswordChar="*" PlaceholderText="Password" />
@@ -472,7 +472,7 @@
                                                   Click="CameraEnabledButton_Click" />
                                 </Grid>
                                 <StackPanel x:Name="Camera3SettingsFields" Spacing="9">
-                                    <TextBox x:Name="Camera3UrlTextBox" Text="rtsp://192.168.1.103/live" PlaceholderText="RTSP URL" />
+                                    <TextBox x:Name="Camera3UrlTextBox" Text="rtsp://192.168.1.103/live" PlaceholderText="RTSP URL, supports {stream}, {streamIndex}, {channel}, {subtype}" />
                                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                                         <TextBox x:Name="Camera3LoginTextBox" Text="admin" PlaceholderText="Login" />
                                         <TextBox x:Name="Camera3PasswordTextBox" Grid.Column="1" Text="password" PasswordChar="*" PlaceholderText="Password" />
@@ -504,7 +504,7 @@
                                                   Click="CameraEnabledButton_Click" />
                                 </Grid>
                                 <StackPanel x:Name="Camera4SettingsFields" Spacing="9">
-                                    <TextBox x:Name="Camera4UrlTextBox" Text="rtsp://192.168.1.104/live" PlaceholderText="RTSP URL" />
+                                    <TextBox x:Name="Camera4UrlTextBox" Text="rtsp://192.168.1.104/live" PlaceholderText="RTSP URL, supports {stream}, {streamIndex}, {channel}, {subtype}" />
                                     <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
                                         <TextBox x:Name="Camera4LoginTextBox" Text="admin" PlaceholderText="Login" />
                                         <TextBox x:Name="Camera4PasswordTextBox" Grid.Column="1" Text="password" PasswordChar="*" PlaceholderText="Password" />

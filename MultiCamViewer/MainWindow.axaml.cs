@@ -36,6 +36,8 @@ namespace MultiCamViewer
         private const int CameraTotal = 4;
         private const int RtspTimeoutMicroseconds = 5_000_000;
         private const int NetworkCacheMilliseconds = 1_000;
+        private const string NormalCameraVideoAspectRatio = "16:9";
+        private const string RotatedCameraVideoAspectRatio = "9:16";
 
         private readonly IReadOnlyList<Border> _cameraPanels;
         private readonly IReadOnlyList<ToggleButton> _countButtons;
@@ -515,6 +517,7 @@ namespace MultiCamViewer
 
                 _cameraPlaying[index] = true;
                 _cameraPlaybackKeys[index] = playbackKey;
+                ApplyCameraVideoAspectRatio();
             });
         }
 
@@ -809,7 +812,10 @@ namespace MultiCamViewer
                 {
                     EnableMouseInput = false,
                     EnableKeyInput = false,
-                    Mute = true
+                    Mute = true,
+                    Scale = 0,
+                    AspectRatio = GetCameraVideoAspectRatio(),
+                    CropGeometry = GetCameraVideoAspectRatio()
                 };
                 RegisterCameraPlaybackEvents(mediaPlayer, index);
 
@@ -817,7 +823,9 @@ namespace MultiCamViewer
                 var videoView = new VideoView
                 {
                     MediaPlayer = mediaPlayer,
-                    Focusable = false
+                    Focusable = false,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    VerticalAlignment = VerticalAlignment.Stretch
                 };
                 _cameraVideoHosts[index].Children.Clear();
                 _cameraVideoHosts[index].Children.Add(videoView);
@@ -1088,6 +1096,7 @@ namespace MultiCamViewer
                 UpdateCheckedButton(_layoutButtons, (int)_cameraLayout);
                 UpdateStatusText(rows, columns);
                 ApplyScreenOrientationUi();
+                ApplyCameraVideoAspectRatio();
                 SynchronizeCameraPlayback();
             }
             catch
@@ -1108,6 +1117,29 @@ namespace MultiCamViewer
             }
 
             ApplyNormalScreenOrientationUi();
+        }
+
+        private void ApplyCameraVideoAspectRatio()
+        {
+            var aspectRatio = GetCameraVideoAspectRatio();
+
+            for (var index = 0; index < CameraTotal; index++)
+            {
+                var mediaPlayer = _mediaPlayers[index];
+                if (mediaPlayer is null)
+                    continue;
+
+                mediaPlayer.Scale = 0;
+                mediaPlayer.AspectRatio = aspectRatio;
+                mediaPlayer.CropGeometry = aspectRatio;
+            }
+        }
+
+        private string GetCameraVideoAspectRatio()
+        {
+            return ShouldRotateVideo()
+                ? RotatedCameraVideoAspectRatio
+                : NormalCameraVideoAspectRatio;
         }
 
         /// <summary>
@@ -1344,6 +1376,8 @@ namespace MultiCamViewer
         {
             if (_cameraLayout == CameraLayout.Vertical)
                 ApplyScreenOrientationUi();
+
+            ApplyCameraVideoAspectRatio();
         }
 
         /// <summary>

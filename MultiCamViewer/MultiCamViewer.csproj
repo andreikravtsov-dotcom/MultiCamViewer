@@ -7,6 +7,10 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="MultiCamViewer-linux-arm64-v1.0.0.zip" />
+    <None Remove="MultiCamViewer-linux-arm64.tar.gz" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.0.3" />

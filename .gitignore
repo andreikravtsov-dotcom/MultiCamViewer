@@ -361,3 +361,5 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/MultiCamViewer/MultiCamViewer-linux-arm64-v1.0.0.zip
+/MultiCamViewer/MultiCamViewer-linux-arm64.tar.gz

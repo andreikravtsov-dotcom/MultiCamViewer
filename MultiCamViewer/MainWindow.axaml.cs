@@ -1,7 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Threading;
 using LibVLCSharp.Avalonia;
 using LibVLCSharp.Shared;
@@ -42,6 +45,7 @@ namespace MultiCamViewer
         private readonly IReadOnlyList<ComboBox> _cameraStreamComboBoxes;
         private readonly IReadOnlyList<ComboBox> _cameraTransportComboBoxes;
         private readonly IReadOnlyList<TextBlock> _cameraUrlPreviewTexts;
+        private readonly IReadOnlyList<StackPanel> _cameraPlaceholderPanels;
         private readonly IReadOnlyList<Grid> _cameraVideoHosts;
         private readonly DispatcherTimer _controlsHideTimer;
 
@@ -54,6 +58,7 @@ namespace MultiCamViewer
 
         private bool _vlcReady;
         private bool _vlcInitializing;
+        private bool _suspendPlaybackSync;
         private bool _playbackRequested;
         private int _cameraCount = 4;
         private CameraLayout _cameraLayout = CameraLayout.Grid;
@@ -155,6 +160,14 @@ namespace MultiCamViewer
                 Camera4UrlPreviewText
             ];
 
+            _cameraPlaceholderPanels =
+            [
+                Camera1PlaceholderPanel,
+                Camera2PlaceholderPanel,
+                Camera3PlaceholderPanel,
+                Camera4PlaceholderPanel
+            ];
+
             _cameraVideoHosts =
             [
                 Camera1VideoHost,
@@ -170,6 +183,7 @@ namespace MultiCamViewer
                 Interval = TimeSpan.FromSeconds(4)
             };
             _controlsHideTimer.Tick += (_, _) => HideControlsOverlay();
+            SizeChanged += MainWindow_SizeChanged;
 
             LoadSettings();
             ApplyCameraLayout();
@@ -187,6 +201,7 @@ namespace MultiCamViewer
             {
                 base.OnOpened(e);
 
+                ApplyScreenOrientationUi();
                 await Task.Delay(1500);
                 await StartLivePlaybackAsync();
             }
@@ -205,12 +220,11 @@ namespace MultiCamViewer
         {
             try
             {
+                _suspendPlaybackSync = true;
+
                 StopAllCameraStreams();
+                DisposeVlcPlayback();
 
-                foreach (var mediaPlayer in _mediaPlayers)
-                    mediaPlayer?.Dispose();
-
-                _libVlc?.Dispose();
                 base.OnClosed(e);
             }
             catch (Exception ex)
@@ -399,7 +413,7 @@ namespace MultiCamViewer
                     return;
 
                 var url = BuildCameraUrl(index);
-                var playbackKey = $"{url}|{_cameraTransportComboBoxes[index].SelectedIndex}";
+                var playbackKey = $"{url}|{_cameraTransportComboBoxes[index].SelectedIndex}|{_cameraLayout}";
 
                 if (_cameraPlaying[index] && _cameraPlaybackKeys[index] == playbackKey)
                     return;
@@ -433,7 +447,7 @@ namespace MultiCamViewer
         {
             try
             {
-                if (!_playbackRequested || !_vlcReady)
+                if (_suspendPlaybackSync || !_playbackRequested || !_vlcReady)
                     return;
 
                 for (var index = 0; index < CameraTotal; index++)
@@ -559,10 +573,11 @@ namespace MultiCamViewer
 
             try
             {
+                var rotateVideo = ShouldRotateVideo();
                 libVlc = await Task.Run(() =>
                 {
                     Core.Initialize();
-                    return new LibVLC("--no-osd", "--no-video-title-show", "--quiet");
+                    return new LibVLC(CreateLibVlcOptions(rotateVideo));
                 });
             }
             catch
@@ -573,7 +588,6 @@ namespace MultiCamViewer
             }
 
             _libVlc = libVlc;
-
             for (var index = 0; index < CameraTotal; index++)
             {
                 var mediaPlayer = new MediaPlayer(_libVlc)
@@ -596,6 +610,95 @@ namespace MultiCamViewer
             _vlcReady = true;
             _vlcInitializing = false;
             SynchronizeCameraPlayback();
+        }
+
+        /// <summary>
+        /// Reinitializes the VLC playback by stopping all camera streams, detaching video views, 
+        /// disposing of the existing VLC instance, and then initializing a new VLC instance.
+        /// </summary>
+        /// <returns></returns>
+        private async Task ReinitializeVlcPlaybackAsync()
+        {
+            if (_vlcInitializing)
+                return;
+
+            _suspendPlaybackSync = true;
+            StopAllCameraStreams();
+            DetachVideoViews();
+            await Task.Delay(300);
+            DisposeVlcPlayback();
+            _suspendPlaybackSync = false;
+            await InitializeVlcPlaybackAsync();
+        }
+
+        /// <summary>
+        /// Detaches the video views from the camera video hosts by setting their MediaPlayer property to null and clearing the children of each video host panel.
+        /// </summary>
+        private void DetachVideoViews()
+        {
+            foreach (var host in _cameraVideoHosts)
+            {
+                foreach (var child in host.Children)
+                {
+                    if (child is VideoView videoView)
+                        videoView.MediaPlayer = null;
+                }
+
+                host.Children.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Disposes of the VLC media players and the VLC instance, resets the playback state for each camera, and marks VLC as not ready.
+        /// </summary>
+        private void DisposeVlcPlayback()
+        {
+            DetachVideoViews();
+
+            for (var index = 0; index < CameraTotal; index++)
+            {
+                _mediaPlayers[index]?.Dispose();
+                _mediaPlayers[index] = null;
+                _cameraPlaying[index] = false;
+                _cameraPlaybackKeys[index] = string.Empty;
+            }
+
+            _libVlc?.Dispose();
+            _libVlc = null;
+            _vlcReady = false;
+        }
+
+        /// <summary>
+        /// Creates an array of options to be passed to the LibVLC constructor based on whether the video should be rotated for vertical layout.
+        /// </summary>
+        /// <param name="rotateVideo"></param>
+        /// <returns></returns>
+        private static string[] CreateLibVlcOptions(bool rotateVideo)
+        {
+            var options = new List<string>
+            {
+                "--no-osd",
+                "--no-video-title-show",
+                "--quiet"
+            };
+
+            if (rotateVideo)
+            {
+                options.Add("--video-filter=transform");
+                options.Add("--transform-type=270");
+            }
+
+            return [.. options];
+        }
+
+        /// <summary>
+        /// Determines whether the video should be rotated based on the current camera layout. 
+        /// If the layout is vertical, the video should be rotated to fit the orientation of the screen.
+        /// </summary>
+        /// <returns></returns>
+        private bool ShouldRotateVideo()
+        {
+            return _cameraLayout == CameraLayout.Vertical;
         }
 
         /// <summary>
@@ -768,12 +871,172 @@ namespace MultiCamViewer
                 UpdateCheckedButton(_countButtons, _cameraCount - 1);
                 UpdateCheckedButton(_layoutButtons, (int)_cameraLayout);
                 UpdateStatusText(rows, columns);
+                ApplyScreenOrientationUi();
                 SynchronizeCameraPlayback();
             }
             catch
             {
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Applies adjustments to the user interface layout based on the current screen orientation and camera layout.
+        /// </summary>
+        private void ApplyScreenOrientationUi()
+        {
+            if (_cameraLayout == CameraLayout.Vertical)
+            {
+                ApplyVerticalScreenOrientationUi();
+                return;
+            }
+
+            ApplyNormalScreenOrientationUi();
+        }
+
+        /// <summary>
+        ///Applies the user interface layout for normal screen orientation, arranging the controls and camera panels in a way that is optimized for horizontal layouts.
+        /// </summary>
+        private void ApplyNormalScreenOrientationUi()
+        {
+            RootView.RowDefinitions.Clear();
+            RootView.RowDefinitions.Add(new RowDefinition(new GridLength(4)));
+            RootView.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+            RootView.ColumnDefinitions.Clear();
+            RootView.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+
+            Grid.SetRow(TopActivationStrip, 0);
+            Grid.SetColumn(TopActivationStrip, 0);
+            Grid.SetRowSpan(TopActivationStrip, 1);
+            Grid.SetColumnSpan(TopActivationStrip, 1);
+
+            Grid.SetRow(CameraGrid, 1);
+            Grid.SetColumn(CameraGrid, 0);
+            Grid.SetRowSpan(CameraGrid, 1);
+            Grid.SetColumnSpan(CameraGrid, 1);
+
+            Grid.SetRow(ControlsOverlay, 0);
+            Grid.SetColumn(ControlsOverlay, 0);
+            Grid.SetRowSpan(ControlsOverlay, 2);
+            Grid.SetColumnSpan(ControlsOverlay, 1);
+            ControlsOverlay.Width = double.NaN;
+            ControlsOverlay.Height = double.NaN;
+            ControlsOverlay.Margin = new Thickness(16);
+            ControlsOverlay.HorizontalAlignment = HorizontalAlignment.Stretch;
+            ControlsOverlay.VerticalAlignment = VerticalAlignment.Top;
+            ResetControlTransform(ControlsOverlay);
+
+            Grid.SetRow(SettingsPanel, 0);
+            Grid.SetColumn(SettingsPanel, 0);
+            Grid.SetRowSpan(SettingsPanel, 2);
+            Grid.SetColumnSpan(SettingsPanel, 1);
+            SettingsPanel.Width = 390;
+            SettingsPanel.Height = double.NaN;
+            SettingsPanel.BorderThickness = new Thickness(1, 0, 0, 0);
+            SettingsPanel.HorizontalAlignment = HorizontalAlignment.Right;
+            SettingsPanel.VerticalAlignment = VerticalAlignment.Stretch;
+            ResetControlTransform(SettingsPanel);
+
+            foreach (var placeholderPanel in _cameraPlaceholderPanels)
+            {
+                ResetControlTransform(placeholderPanel);
+            }
+        }
+
+        /// <summary>
+        /// Applies the user interface layout for vertical screen orientation, rearranging and rotating the controls and camera panels to optimize for a portrait layout.
+        /// </summary>
+        private void ApplyVerticalScreenOrientationUi()
+        {
+            RootView.RowDefinitions.Clear();
+            RootView.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+            RootView.ColumnDefinitions.Clear();
+            RootView.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(4)));
+            RootView.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+
+            Grid.SetRow(TopActivationStrip, 0);
+            Grid.SetColumn(TopActivationStrip, 0);
+            Grid.SetRowSpan(TopActivationStrip, 1);
+            Grid.SetColumnSpan(TopActivationStrip, 1);
+
+            var rotatedUiLength = GetRotatedUiLength();
+
+            Grid.SetRow(CameraGrid, 0);
+            Grid.SetColumn(CameraGrid, 1);
+            Grid.SetRowSpan(CameraGrid, 1);
+            Grid.SetColumnSpan(CameraGrid, 1);
+
+            Grid.SetRow(ControlsOverlay, 0);
+            Grid.SetColumn(ControlsOverlay, 0);
+            Grid.SetRowSpan(ControlsOverlay, 1);
+            Grid.SetColumnSpan(ControlsOverlay, 2);
+            ControlsOverlay.Width = rotatedUiLength;
+            ControlsOverlay.Height = 74;
+            ControlsOverlay.Margin = new Thickness(0);
+            ControlsOverlay.HorizontalAlignment = HorizontalAlignment.Left;
+            ControlsOverlay.VerticalAlignment = VerticalAlignment.Top;
+            RotateControlLeft(ControlsOverlay, ControlsOverlay.Width);
+
+            Grid.SetRow(SettingsPanel, 0);
+            Grid.SetColumn(SettingsPanel, 0);
+            Grid.SetRowSpan(SettingsPanel, 1);
+            Grid.SetColumnSpan(SettingsPanel, 2);
+            SettingsPanel.Width = rotatedUiLength;
+            SettingsPanel.Height = 390;
+            SettingsPanel.BorderThickness = new Thickness(0, 0, 0, 1);
+            SettingsPanel.HorizontalAlignment = HorizontalAlignment.Left;
+            SettingsPanel.VerticalAlignment = VerticalAlignment.Top;
+            RotateControlLeft(SettingsPanel, SettingsPanel.Width);
+
+            foreach (var placeholderPanel in _cameraPlaceholderPanels)
+            {
+                RotateControlLeftAtCenter(placeholderPanel);
+            }
+        }
+
+        /// <summary>
+        ///Calculates the length to be used for the width of the controls and settings panel when the video is rotated for vertical layout.
+        /// </summary>
+        /// <returns></returns>
+        private double GetRotatedUiLength()
+        {
+            var height = ClientSize.Height > 0 ? ClientSize.Height : Bounds.Height;
+            return height > 0 ? height : 760;
+        }
+
+        /// <summary>
+        /// Resets the RenderTransform and RenderTransformOrigin properties of the specified control to their default values, effectively removing any rotation or transformation applied to the control.
+        /// </summary>
+        /// <param name="control"></param>
+        private static void ResetControlTransform(Control control)
+        {
+            control.RenderTransform = null;
+            control.RenderTransformOrigin = RelativePoint.TopLeft;
+        }
+
+        /// <summary>
+        ///Applies a rotation and translation transform to the specified control to rotate it 90 degrees to the left (counterclockwise) around its top-left corner,
+        /// </summary>
+        /// <param name="control"></param>
+        /// <param name="unrotatedWidth"></param>
+        private static void RotateControlLeft(Control control, double unrotatedWidth)
+        {
+            var transform = new TransformGroup();
+            transform.Children.Add(new RotateTransform(-90));
+            transform.Children.Add(new TranslateTransform(0, unrotatedWidth));
+
+            control.RenderTransformOrigin = RelativePoint.TopLeft;
+            control.RenderTransform = transform;
+        }
+
+        /// <summary>
+        /// Applies a rotation transform to the specified control to rotate it 90 degrees to the left (counterclockwise) around its center point,
+        /// </summary>
+        /// <param name="control"></param>
+        private static void RotateControlLeftAtCenter(Control control)
+        {
+            control.RenderTransformOrigin = RelativePoint.Center;
+            control.RenderTransform = new RotateTransform(-90);
         }
 
         /// <summary>
@@ -861,6 +1124,12 @@ namespace MultiCamViewer
             e.Handled = true;
         }
 
+        private void MainWindow_SizeChanged(object? sender, SizeChangedEventArgs e)
+        {
+            if (_cameraLayout == CameraLayout.Vertical)
+                ApplyScreenOrientationUi();
+        }
+
         /// <summary>
         /// Handles the Click event for the camera count selection buttons. When a user clicks one of the camera count buttons, this event is triggered,
         /// </summary>
@@ -903,6 +1172,7 @@ namespace MultiCamViewer
             {
                 ShowControlsOverlay();
 
+                var wasRotated = ShouldRotateVideo();
                 _cameraLayout = sender switch
                 {
                     ToggleButton button when button == GridLayoutButton => CameraLayout.Grid,
@@ -910,7 +1180,15 @@ namespace MultiCamViewer
                     ToggleButton button when button == VerticalLayoutButton => CameraLayout.Vertical,
                     _ => _cameraLayout
                 };
+
+                var needsVlcReinitialization = _vlcReady && wasRotated != ShouldRotateVideo();
+                if (needsVlcReinitialization)
+                    _suspendPlaybackSync = true;
+
                 ApplyCameraLayout();
+
+                if (needsVlcReinitialization)
+                    await ReinitializeVlcPlaybackAsync();
             }
             catch (Exception ex)
             {

@@ -51,6 +51,10 @@ namespace MultiCamViewer
         private readonly IReadOnlyList<ComboBox> _cameraTransportComboBoxes;
         private readonly IReadOnlyList<TextBlock> _cameraUrlPreviewTexts;
         private readonly IReadOnlyList<StackPanel> _cameraPlaceholderPanels;
+        private readonly IReadOnlyList<StackPanel> _cameraStatusPanels;
+        private readonly IReadOnlyList<Border> _cameraStatusOverlays;
+        private readonly IReadOnlyList<TextBlock> _cameraStatusTitleTexts;
+        private readonly IReadOnlyList<TextBlock> _cameraStatusDetailTexts;
         private readonly IReadOnlyList<Grid> _cameraVideoHosts;
         private readonly DispatcherTimer _controlsHideTimer;
         private readonly DispatcherTimer _autoReconnectTimer;
@@ -61,6 +65,7 @@ namespace MultiCamViewer
         private readonly string[] _cameraPlaybackKeys = ["", "", "", ""];
         private readonly int[] _cameraPlaybackVersions = new int[CameraTotal];
         private readonly DateTimeOffset[] _lastReconnectAttemptAt = new DateTimeOffset[CameraTotal];
+        private readonly DateTimeOffset[] _suppressLostStatusUntil = new DateTimeOffset[CameraTotal];
 
         private readonly MediaPlayer?[] _mediaPlayers = new MediaPlayer?[CameraTotal];
         private LibVLC? _libVlc;
@@ -175,6 +180,38 @@ namespace MultiCamViewer
                 Camera2PlaceholderPanel,
                 Camera3PlaceholderPanel,
                 Camera4PlaceholderPanel
+            ];
+
+            _cameraStatusPanels =
+            [
+                Camera1StatusPanel,
+                Camera2StatusPanel,
+                Camera3StatusPanel,
+                Camera4StatusPanel
+            ];
+
+            _cameraStatusOverlays =
+            [
+                Camera1StatusOverlay,
+                Camera2StatusOverlay,
+                Camera3StatusOverlay,
+                Camera4StatusOverlay
+            ];
+
+            _cameraStatusTitleTexts =
+            [
+                Camera1StatusTitleText,
+                Camera2StatusTitleText,
+                Camera3StatusTitleText,
+                Camera4StatusTitleText
+            ];
+
+            _cameraStatusDetailTexts =
+            [
+                Camera1StatusDetailText,
+                Camera2StatusDetailText,
+                Camera3StatusDetailText,
+                Camera4StatusDetailText
             ];
 
             _cameraVideoHosts =
@@ -443,11 +480,15 @@ namespace MultiCamViewer
                 StopCameraStream(index);
 
                 if (string.IsNullOrWhiteSpace(url))
+                {
+                    ShowCameraStatus(index, "NO STREAM", "Camera URL is empty");
                     return;
+                }
 
                 var playbackVersion = _cameraPlaybackVersions[index];
                 _cameraPlayStarting[index] = true;
                 _lastReconnectAttemptAt[index] = DateTimeOffset.UtcNow;
+                ShowCameraStatus(index, "CONNECTING", "Opening stream...");
                 _ = StartCameraPlaybackAsync(index, playbackVersion, mediaPlayer, url, transportIndex, playbackKey);
             }
             catch
@@ -512,6 +553,15 @@ namespace MultiCamViewer
                 {
                     _cameraPlaying[index] = false;
                     _cameraPlaybackKeys[index] = string.Empty;
+
+                    if (!playStarted
+                        && !_suspendPlaybackSync
+                        && _cameraPanels[index].IsVisible
+                        && _cameraEnabled[index])
+                    {
+                        ShowCameraStatus(index, "STREAM LOST", "Reconnecting...");
+                    }
+
                     return;
                 }
 
@@ -578,8 +628,8 @@ namespace MultiCamViewer
                     if (DateTimeOffset.UtcNow - _lastReconnectAttemptAt[index] < TimeSpan.FromSeconds(10))
                         continue;
 
-                    _cameraPlaying[index] = false;
-                    _cameraPlaybackKeys[index] = string.Empty;
+                    ShowCameraStatus(index, "STREAM LOST", "Reconnecting...");
+                    StopCameraStream(index, hideStatus: false);
                     EnsureCameraPlaying(index);
                 }
             }
@@ -598,6 +648,7 @@ namespace MultiCamViewer
         {
             mediaPlayer.EncounteredError += (_, _) => MarkCameraForReconnect(index);
             mediaPlayer.EndReached += (_, _) => MarkCameraForReconnect(index);
+            mediaPlayer.Playing += (_, _) => MarkCameraAsLive(index);
         }
 
         /// <summary>
@@ -614,8 +665,22 @@ namespace MultiCamViewer
                 if (_cameraPlayStarting[index])
                     return;
 
-                _cameraPlaying[index] = false;
-                _cameraPlaybackKeys[index] = string.Empty;
+                if (DateTimeOffset.UtcNow < _suppressLostStatusUntil[index])
+                    return;
+
+                ShowCameraStatus(index, "STREAM LOST", "Reconnecting...");
+                StopCameraStream(index, hideStatus: false);
+            });
+        }
+
+        private void MarkCameraAsLive(int index)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (index < 0 || index >= CameraTotal)
+                    return;
+
+                HideCameraStatus(index);
             });
         }
 
@@ -639,7 +704,7 @@ namespace MultiCamViewer
         /// Stops the camera stream for the specified index if it is currently playing, and resets the playback state for that camera.
         /// </summary>
         /// <param name="index"></param>
-        private void StopCameraStream(int index)
+        private void StopCameraStream(int index, bool hideStatus = true)
         {
             try
             {
@@ -648,10 +713,16 @@ namespace MultiCamViewer
                 _cameraPlaybackVersions[index]++;
                 _cameraPlayStarting[index] = false;
 
+                if (hideStatus)
+                    _suppressLostStatusUntil[index] = DateTimeOffset.UtcNow.AddSeconds(1);
+
                 if (mediaPlayer?.IsPlaying == true)
                     mediaPlayer.Stop();
                 _cameraPlaying[index] = false;
                 _cameraPlaybackKeys[index] = string.Empty;
+
+                if (hideStatus)
+                    HideCameraStatus(index);
             }
             catch
             {
@@ -992,7 +1063,34 @@ namespace MultiCamViewer
         private void SetVideoHostsVisible(bool isVisible)
         {
             for (var index = 0; index < _cameraVideoHosts.Count; index++)
-                _cameraVideoHosts[index].IsVisible = isVisible;
+                _cameraVideoHosts[index].IsVisible = isVisible && !_cameraStatusOverlays[index].IsVisible;
+        }
+
+        private void ShowCameraStatus(int index, string title, string detail)
+        {
+            if (index < 0 || index >= CameraTotal)
+                return;
+
+            _cameraStatusTitleTexts[index].Text = title;
+            _cameraStatusDetailTexts[index].Text = detail;
+            _cameraStatusOverlays[index].IsVisible = true;
+            _cameraVideoHosts[index].IsVisible = false;
+        }
+
+        private void HideCameraStatus(int index)
+        {
+            if (index < 0 || index >= CameraTotal)
+                return;
+
+            _cameraStatusOverlays[index].IsVisible = false;
+            _cameraVideoHosts[index].IsVisible = ShouldShowCameraVideoHost(index);
+        }
+
+        private bool ShouldShowCameraVideoHost(int index)
+        {
+            return _cameraPanels[index].IsVisible
+                && !ControlsOverlay.IsVisible
+                && !SettingsPanel.IsVisible;
         }
 
         /// <summary>
@@ -1189,6 +1287,11 @@ namespace MultiCamViewer
             {
                 ResetControlTransform(placeholderPanel);
             }
+
+            foreach (var statusPanel in _cameraStatusPanels)
+            {
+                ResetControlTransform(statusPanel);
+            }
         }
 
         /// <summary>
@@ -1239,6 +1342,11 @@ namespace MultiCamViewer
             foreach (var placeholderPanel in _cameraPlaceholderPanels)
             {
                 RotateControlLeftAtCenter(placeholderPanel);
+            }
+
+            foreach (var statusPanel in _cameraStatusPanels)
+            {
+                RotateControlLeftAtCenter(statusPanel);
             }
         }
 

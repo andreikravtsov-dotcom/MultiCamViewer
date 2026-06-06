@@ -263,6 +263,12 @@
             <Setter Property="Padding" Value="10,6" />
         </Style>
 
+        <Style Selector="Border.camera-status-overlay">
+            <Setter Property="Background" Value="#E6020305" />
+            <Setter Property="BorderBrush" Value="#DC2626" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+
         <Style Selector="Border.settings-card">
             <Setter Property="Background" Value="#0B0F16" />
             <Setter Property="BorderBrush" Value="#253044" />
@@ -302,6 +308,12 @@
                                    FontSize="12"
                                    HorizontalAlignment="Center" />
                     </StackPanel>
+                    <Border x:Name="Camera1StatusOverlay" Classes="camera-status-overlay" IsVisible="False">
+                        <StackPanel x:Name="Camera1StatusPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                            <TextBlock x:Name="Camera1StatusTitleText" Text="STREAM LOST" Foreground="#FCA5A5" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="Camera1StatusDetailText" Text="Reconnecting..." Foreground="#CBD5E1" FontSize="12" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -312,6 +324,12 @@
                         <TextBlock Text="LIVE STREAM" Foreground="#536074" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock x:Name="Camera2UrlPreviewText" Text="rtsp://192.168.1.102/live" Foreground="#3D4655" FontSize="12" HorizontalAlignment="Center" />
                     </StackPanel>
+                    <Border x:Name="Camera2StatusOverlay" Classes="camera-status-overlay" IsVisible="False">
+                        <StackPanel x:Name="Camera2StatusPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                            <TextBlock x:Name="Camera2StatusTitleText" Text="STREAM LOST" Foreground="#FCA5A5" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="Camera2StatusDetailText" Text="Reconnecting..." Foreground="#CBD5E1" FontSize="12" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -322,6 +340,12 @@
                         <TextBlock Text="LIVE STREAM" Foreground="#536074" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock x:Name="Camera3UrlPreviewText" Text="rtsp://192.168.1.103/live" Foreground="#3D4655" FontSize="12" HorizontalAlignment="Center" />
                     </StackPanel>
+                    <Border x:Name="Camera3StatusOverlay" Classes="camera-status-overlay" IsVisible="False">
+                        <StackPanel x:Name="Camera3StatusPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                            <TextBlock x:Name="Camera3StatusTitleText" Text="STREAM LOST" Foreground="#FCA5A5" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="Camera3StatusDetailText" Text="Reconnecting..." Foreground="#CBD5E1" FontSize="12" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -332,6 +356,12 @@
                         <TextBlock Text="LIVE STREAM" Foreground="#536074" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock x:Name="Camera4UrlPreviewText" Text="rtsp://192.168.1.104/live" Foreground="#3D4655" FontSize="12" HorizontalAlignment="Center" />
                     </StackPanel>
+                    <Border x:Name="Camera4StatusOverlay" Classes="camera-status-overlay" IsVisible="False">
+                        <StackPanel x:Name="Camera4StatusPanel" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                            <TextBlock x:Name="Camera4StatusTitleText" Text="STREAM LOST" Foreground="#FCA5A5" FontSize="20" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                            <TextBlock x:Name="Camera4StatusDetailText" Text="Reconnecting..." Foreground="#CBD5E1" FontSize="12" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
         </Grid>

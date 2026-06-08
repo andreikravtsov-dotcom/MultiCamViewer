@@ -673,6 +673,10 @@ namespace MultiCamViewer
             });
         }
 
+        /// <summary>
+        /// Marks the camera stream for the specified index as live by hiding any status overlays and allowing the video host to be visible again.
+        /// </summary>
+        /// <param name="index"></param>
         private void MarkCameraAsLive(int index)
         {
             Dispatcher.UIThread.Post(() =>
@@ -764,6 +768,12 @@ namespace MultiCamViewer
             }
         }
 
+        /// <summary>
+        /// Applies the stream selection to the provided camera URL by replacing known placeholders or patterns with the appropriate values based on the selected stream index.
+        /// </summary>
+        /// <param name="url">The camera URL to which the stream selection will be applied.</param>
+        /// <param name="streamIndex">The index of the stream to apply (0 for main, 1 for sub, 2 for auto).</param>
+        /// <returns>The modified camera URL with the appropriate stream selection applied.</returns>
         private static string ApplyStreamSelectionToUrl(string url, int streamIndex)
         {
             if (string.IsNullOrWhiteSpace(url))
@@ -805,6 +815,11 @@ namespace MultiCamViewer
             };
         }
 
+        /// <summary>
+        /// Applies known patterns for selecting the main stream in camera URLs by replacing common placeholders or patterns that indicate the main stream with the appropriate values.
+        /// </summary>
+        /// <param name="url">The camera URL to which the patterns will be applied.</param>
+        /// <returns>The modified camera URL with the main stream patterns applied.</returns>
         private static string ApplyKnownMainStreamPatterns(string url)
         {
             var result = Regex.Replace(url, @"(?<=/Streaming/Channels/)102\b", "101", RegexOptions.IgnoreCase);
@@ -814,6 +829,11 @@ namespace MultiCamViewer
             return result;
         }
 
+        /// <summary>
+        /// Applies known patterns for selecting the sub stream in camera URLs by replacing common placeholders or patterns that indicate the sub stream with the appropriate values.       
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
         private static string ApplyKnownSubStreamPatterns(string url)
         {
             var result = Regex.Replace(url, @"(?<=/Streaming/Channels/)101\b", "102", RegexOptions.IgnoreCase);
@@ -1066,6 +1086,12 @@ namespace MultiCamViewer
                 _cameraVideoHosts[index].IsVisible = isVisible && !_cameraStatusOverlays[index].IsVisible;
         }
 
+        /// <summary>
+        /// Displays a status overlay on top of the camera video host for the specified index, showing the provided title and detail messages to indicate the current status of the camera stream (e.g., connecting, stream lost, no stream).
+        /// </summary>
+        /// <param name="index">The index of the camera for which to display status.</param>
+        /// <param name="title">The title to display in the status overlay.</param>
+        /// <param name="detail">The detail message to display in the status overlay.</param>
         private void ShowCameraStatus(int index, string title, string detail)
         {
             if (index < 0 || index >= CameraTotal)
@@ -1077,6 +1103,10 @@ namespace MultiCamViewer
             _cameraVideoHosts[index].IsVisible = false;
         }
 
+        /// <summary>
+        /// Hides the status overlay for the camera at the specified index and makes the camera video host visible again if it should be shown based on the current visibility of the camera panel and other overlays.  
+        /// </summary>
+        /// <param name="index"></param>
         private void HideCameraStatus(int index)
         {
             if (index < 0 || index >= CameraTotal)
@@ -1086,6 +1116,11 @@ namespace MultiCamViewer
             _cameraVideoHosts[index].IsVisible = ShouldShowCameraVideoHost(index);
         }
 
+        /// <summary>
+        /// Determines whether the camera video host for the specified index should be visible based on the visibility of the camera panel and other overlays.
+        /// </summary>
+        /// <param name="index"></param>
+        /// <returns></returns>
         private bool ShouldShowCameraVideoHost(int index)
         {
             return _cameraPanels[index].IsVisible
@@ -1217,6 +1252,9 @@ namespace MultiCamViewer
             ApplyNormalScreenOrientationUi();
         }
 
+        /// <summary>
+        ///Applies the appropriate aspect ratio settings to the camera video hosts based on whether the video is rotated for vertical layout or not, ensuring that the video is displayed with the correct proportions in each layout configuration.
+        /// </summary>
         private void ApplyCameraVideoAspectRatio()
         {
             var aspectRatio = GetCameraVideoAspectRatio();
@@ -1233,6 +1271,10 @@ namespace MultiCamViewer
             }
         }
 
+        /// <summary>
+        /// Determines the appropriate aspect ratio string to use for the camera video based on whether the video should be rotated for vertical layout or not.
+        /// </summary>
+        /// <returns></returns>
         private string GetCameraVideoAspectRatio()
         {
             return ShouldRotateVideo()
@@ -1480,6 +1522,11 @@ namespace MultiCamViewer
             e.Handled = true;
         }
 
+        /// <summary>
+        /// Handles the SizeChanged event for the main window. When the window is resized, this event is triggered, and the application applies adjustments to the user interface layout and camera video aspect ratio based on the new size and current layout configuration.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void MainWindow_SizeChanged(object? sender, SizeChangedEventArgs e)
         {
             if (_cameraLayout == CameraLayout.Vertical)

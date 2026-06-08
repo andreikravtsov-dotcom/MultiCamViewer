@@ -1,4 +1,13 @@
-﻿using System.Collections.Generic;
+﻿/******************************************************************************
+ *
+ * File: AppSettings.cs
+ *
+ * Description: Settings for the MultiCamViewer application, including camera configuration and layout options.
+ *
+ * Date: 08.06.2026		Author: Andrei Kravtsov
+ *
+ *****************************************************************************/
+using System.Collections.Generic;
 
 namespace MultiCamViewer
 {

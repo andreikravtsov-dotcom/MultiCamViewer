@@ -1,4 +1,13 @@
-﻿namespace MultiCamViewer
+﻿/******************************************************************************
+ *
+ * File: CameraSettings.cs
+ *
+ * Description: Camera settings for the MultiCamViewer application, including stream URL, authentication, and transport options.
+ *
+ * Date: 08.06.2026		Author: Andrei Kravtsov
+ *
+ *****************************************************************************/
+namespace MultiCamViewer
 {
     public sealed class CameraSettings
     {

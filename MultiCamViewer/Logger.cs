@@ -1,4 +1,13 @@
-﻿using Serilog;
+﻿/******************************************************************************
+ *
+ * File: Logger.cs
+ *
+ * Description: Logger for the MultiCamViewer application, providing simple logging functionality.
+ *
+ * Date: 08.06.2026		Author: Andrei Kravtsov
+ *
+ *****************************************************************************/
+using Serilog;
 using System;
 
 namespace MultiCamViewer

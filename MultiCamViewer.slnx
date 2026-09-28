@@ -3,6 +3,10 @@
     <Platform Name="Any CPU" />
     <Platform Name="x64" />
   </Configurations>
+  <Folder Name="/docs/">
+    <File Path="docs/main.jpg" />
+    <File Path="docs/settings.jpg" />
+  </Folder>
   <Project Path="MultiCamViewer/MultiCamViewer.csproj">
     <Platform Solution="*|x64" Project="x64" />
   </Project>

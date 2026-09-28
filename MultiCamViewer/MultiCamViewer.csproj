@@ -9,6 +9,12 @@
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
   <ItemGroup>
+    <AvaloniaXaml Remove="docs\**" />
+    <Compile Remove="docs\**" />
+    <EmbeddedResource Remove="docs\**" />
+    <None Remove="docs\**" />
+  </ItemGroup>
+  <ItemGroup>
     <None Remove="MultiCamViewer-linux-arm64-v1.0.0.zip" />
     <None Remove="MultiCamViewer-linux-arm64.tar.gz" />
   </ItemGroup>
